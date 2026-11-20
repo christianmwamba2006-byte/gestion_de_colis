@@ -1,0 +1,9 @@
+
+target/
+*.log
+compile_output.txt
+test_output.txt
+test_output2.txt
+.idea/
+.vscode/
+*.iml
