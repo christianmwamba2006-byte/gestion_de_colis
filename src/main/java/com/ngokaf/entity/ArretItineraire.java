@@ -2,6 +2,7 @@ package com.ngokaf.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalTime;
 import java.util.Objects;
 
@@ -24,14 +25,17 @@ public class ArretItineraire {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_itineraire", nullable = false)
+    @NotNull
     private Itineraire itineraire;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_lieu", nullable = false)
+    @NotNull
     private Lieu lieu;
 
     @Column(name = "ordre_arret", nullable = false)
     @Min(1)
+    @NotNull
     private Integer ordreArret;
 
     @Column(name = "heure_indicative")
@@ -39,6 +43,7 @@ public class ArretItineraire {
 
     @Column(name = "type_arret", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
+    @NotNull
     private TypeArret typeArret;
 
     @Column(name = "observations", columnDefinition = "TEXT")
