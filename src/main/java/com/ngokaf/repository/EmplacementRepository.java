@@ -1,7 +1,9 @@
 package com.ngokaf.repository;
 
 import com.ngokaf.entity.Emplacement;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +15,10 @@ import java.util.Optional;
 public interface EmplacementRepository extends Repository<Emplacement, Long> {
 
     Optional<Emplacement> findById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Emplacement e where e.id = :id")
+    Optional<Emplacement> findByIdForUpdate(@Param("id") Long id);
 
     List<Emplacement> findByAgence_IdOrderByCodeEmplacementAscIdAsc(Long agenceId);
 

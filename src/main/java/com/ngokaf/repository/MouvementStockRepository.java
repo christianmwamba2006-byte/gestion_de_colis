@@ -23,6 +23,8 @@ public interface MouvementStockRepository extends Repository<MouvementStock, Lon
 
     Optional<MouvementStock> findByCleIdempotence(String cleIdempotence);
 
+    MouvementStock save(MouvementStock mouvement);
+
     List<MouvementStock> findByColis_IdOrderByDateMouvementAscIdAsc(Long colisId);
 
     List<MouvementStock> findByOperation_IdOrderByDateMouvementAscIdAsc(Long operationId);

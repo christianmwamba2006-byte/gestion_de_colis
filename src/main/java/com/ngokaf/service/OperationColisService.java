@@ -3,6 +3,7 @@ package com.ngokaf.service;
 import com.ngokaf.entity.*;
 import com.ngokaf.repository.ColisRepository;
 import com.ngokaf.repository.ColisTransportRepository;
+import com.ngokaf.repository.EmplacementRepository;
 import com.ngokaf.repository.OperationColisRepository;
 import com.ngokaf.repository.TransportArretRepository;
 import com.ngokaf.repository.TransportRepository;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class OperationColisService {
@@ -23,47 +25,62 @@ public class OperationColisService {
 
     private final ColisRepository colisRepository;
     private final ColisTransportRepository colisTransportRepository;
+    private final EmplacementRepository emplacementRepository;
     private final TransportArretRepository transportArretRepository;
     private final TransportRepository transportRepository;
     private final OperationColisRepository operationColisRepository;
     private final CurrentUtilisateurService currentUtilisateurService;
+    private final MouvementStockService mouvementStockService;
 
     public OperationColisService(ColisRepository colisRepository,
                                  ColisTransportRepository colisTransportRepository,
+                                 EmplacementRepository emplacementRepository,
                                  TransportArretRepository transportArretRepository,
                                  TransportRepository transportRepository,
                                  OperationColisRepository operationColisRepository,
-                                 CurrentUtilisateurService currentUtilisateurService) {
+                                 CurrentUtilisateurService currentUtilisateurService,
+                                 MouvementStockService mouvementStockService) {
         this.colisRepository = colisRepository;
         this.colisTransportRepository = colisTransportRepository;
+        this.emplacementRepository = emplacementRepository;
         this.transportArretRepository = transportArretRepository;
         this.transportRepository = transportRepository;
         this.operationColisRepository = operationColisRepository;
         this.currentUtilisateurService = currentUtilisateurService;
+        this.mouvementStockService = mouvementStockService;
     }
 
     @Transactional
     public OperationColis embarquer(Long participationId, Long arretId,
                                     Integer quantite, String observations,
                                     String cleIdempotence) {
+        return embarquer(participationId, arretId, quantite, null,
+                observations, cleIdempotence);
+    }
+
+    @Transactional
+    public OperationColis embarquer(Long participationId, Long arretId,
+                                    Integer quantite, Long emplacementStockId,
+                                    String observations, String cleIdempotence) {
         Utilisateur acteur = currentUtilisateurService.requireAuthenticatedUtilisateur();
         validerCleIdempotence(cleIdempotence);
         OperationColis rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.EMBARQUEMENT, participationId, arretId, quantite,
-                observations, false, acteur);
+                observations, false, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         ColisTransport participation = verrouillerParticipation(participationId);
         rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.EMBARQUEMENT, participationId, arretId, quantite,
-                observations, false, acteur);
+                observations, false, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         validerQuantite(quantite);
         TransportArret arret = requireArretCourant(participation, arretId, false);
         validerParticipationActive(participation);
+        verifierEmplacementAuLieu(emplacementStockId, arret);
 
         long embarquee = somme(participationId, TYPES_EMBARQUEMENT);
         long dechargee = somme(participationId, List.of(TypeOperation.DECHARGEMENT));
@@ -72,31 +89,41 @@ public class OperationColisService {
                     "Un colis déjà embarqué doit être réembarqué après un déchargement temporaire.");
         }
         return enregistrerEmbarquement(participation, arret, acteur, quantite,
-                observations, TypeOperation.EMBARQUEMENT, cleIdempotence);
+                observations, TypeOperation.EMBARQUEMENT, cleIdempotence,
+                emplacementStockId);
     }
 
     @Transactional
     public OperationColis reembarquer(Long participationId, Long arretId,
                                       Integer quantite, String observations,
                                       String cleIdempotence) {
+        return reembarquer(participationId, arretId, quantite, null,
+                observations, cleIdempotence);
+    }
+
+    @Transactional
+    public OperationColis reembarquer(Long participationId, Long arretId,
+                                      Integer quantite, Long emplacementStockId,
+                                      String observations, String cleIdempotence) {
         Utilisateur acteur = currentUtilisateurService.requireAuthenticatedUtilisateur();
         validerCleIdempotence(cleIdempotence);
         OperationColis rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.REEMBARQUEMENT, participationId, arretId, quantite,
-                observations, false, acteur);
+                observations, false, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         ColisTransport participation = verrouillerParticipation(participationId);
         rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.REEMBARQUEMENT, participationId, arretId, quantite,
-                observations, false, acteur);
+                observations, false, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         validerQuantite(quantite);
         TransportArret arret = requireArretCourant(participation, arretId, false);
         validerParticipationActive(participation);
+        verifierEmplacementAuLieu(emplacementStockId, arret);
 
         long embarquee = somme(participationId, TYPES_EMBARQUEMENT);
         long dechargee = somme(participationId, List.of(TypeOperation.DECHARGEMENT));
@@ -111,31 +138,42 @@ public class OperationColisService {
                     "Le réembarquement exige un déchargement temporaire précédent.");
         }
         return enregistrerEmbarquement(participation, arret, acteur, quantite,
-                observations, TypeOperation.REEMBARQUEMENT, cleIdempotence);
+                observations, TypeOperation.REEMBARQUEMENT, cleIdempotence,
+                emplacementStockId);
     }
 
     @Transactional
     public OperationColis decharger(Long participationId, Long arretId,
                                     Integer quantite, boolean definitif,
                                     String observations, String cleIdempotence) {
+        return decharger(participationId, arretId, quantite, definitif, null,
+                observations, cleIdempotence);
+    }
+
+    @Transactional
+    public OperationColis decharger(Long participationId, Long arretId,
+                                    Integer quantite, boolean definitif,
+                                    Long emplacementStockId,
+                                    String observations, String cleIdempotence) {
         Utilisateur acteur = currentUtilisateurService.requireAuthenticatedUtilisateur();
         validerCleIdempotence(cleIdempotence);
         OperationColis rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.DECHARGEMENT, participationId, arretId, quantite,
-                observations, definitif, acteur);
+                observations, definitif, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         ColisTransport participation = verrouillerParticipation(participationId);
         rejouee = rejouerSiExistante(cleIdempotence,
                 TypeOperation.DECHARGEMENT, participationId, arretId, quantite,
-                observations, definitif, acteur);
+                observations, definitif, emplacementStockId, acteur);
         if (rejouee != null) {
             return rejouee;
         }
         validerQuantite(quantite);
         TransportArret arret = requireArretCourant(participation, arretId, true);
         validerParticipationActive(participation);
+        verifierEmplacementAuLieu(emplacementStockId, arret);
 
         long embarquee = somme(participationId, TYPES_EMBARQUEMENT);
         long dechargee = somme(participationId, List.of(TypeOperation.DECHARGEMENT));
@@ -163,6 +201,7 @@ public class OperationColisService {
         LocalDateTime maintenant = LocalDateTime.now();
         participation.enregistrerDechargement(maintenant, definitif, arret);
         operationColisRepository.save(operation);
+        enregistrerMouvementStock(operation, emplacementStockId);
         return operation;
     }
 
@@ -183,7 +222,7 @@ public class OperationColisService {
     private OperationColis enregistrerEmbarquement(
             ColisTransport participation, TransportArret arret, Utilisateur acteur,
             int quantite, String observations, TypeOperation type,
-            String cleIdempotence) {
+            String cleIdempotence, Long emplacementStockId) {
         long embarquee = somme(participation.getId(), TYPES_EMBARQUEMENT);
         long dechargee = somme(participation.getId(), List.of(TypeOperation.DECHARGEMENT));
         long solde = embarquee - dechargee;
@@ -197,6 +236,7 @@ public class OperationColisService {
                 cleIdempotence);
         participation.enregistrerEmbarquement(maintenant);
         operationColisRepository.save(operation);
+        enregistrerMouvementStock(operation, emplacementStockId);
         return operation;
     }
 
@@ -245,7 +285,8 @@ public class OperationColisService {
     private OperationColis rejouerSiExistante(
             String cleIdempotence, TypeOperation type, Long participationId,
             Long arretId, Integer quantite, String observations,
-            boolean clotureParticipation, Utilisateur acteur) {
+            boolean clotureParticipation, Long emplacementStockId,
+            Utilisateur acteur) {
         OperationColis existante = operationColisRepository
                 .findByCleIdempotence(cleIdempotence)
                 .orElse(null);
@@ -264,7 +305,68 @@ public class OperationColisService {
             throw new IllegalArgumentException(
                     "La clé d'idempotence est déjà utilisée pour une commande différente.");
         }
+        verifierMouvementStockAssocie(existante, emplacementStockId);
         return existante;
+    }
+
+    private void verifierEmplacementAuLieu(Long emplacementStockId, TransportArret arret) {
+        if (emplacementStockId == null) {
+            return;
+        }
+        Emplacement emplacement = emplacementRepository.findById(emplacementStockId)
+                .orElseThrow(() -> new EntityNotFoundException("Emplacement introuvable."));
+        if (!Objects.equals(
+                emplacement.getAgence().getLieu().getId(), arret.getLieu().getId())) {
+            throw new IllegalArgumentException(
+                    "L'emplacement Stock ne correspond pas au lieu de l'arrêt réel.");
+        }
+    }
+
+    private void enregistrerMouvementStock(
+            OperationColis operation, Long emplacementStockId) {
+        if (emplacementStockId == null) {
+            return;
+        }
+        boolean entree = operation.getTypeOperation() == TypeOperation.DECHARGEMENT;
+        mouvementStockService.creer(
+                entree ? TypeMouvement.ENTREE : TypeMouvement.SORTIE,
+                operation.getColisTransport().getColis().getId(),
+                operation.getQuantiteConcernee(),
+                entree ? null : emplacementStockId,
+                entree ? emplacementStockId : null,
+                operation.getId(),
+                null,
+                cleIdempotenceMouvement(operation));
+    }
+
+    private void verifierMouvementStockAssocie(
+            OperationColis operation, Long emplacementStockId) {
+        Optional<MouvementStock> mouvement = mouvementStockService
+                .rechercherParCleIdempotence(cleIdempotenceMouvement(operation));
+        if (emplacementStockId == null) {
+            if (mouvement.isPresent()) {
+                throw new IllegalArgumentException(
+                        "La clé d'idempotence est déjà liée à une opération avec Stock.");
+            }
+            return;
+        }
+
+        boolean entree = operation.getTypeOperation() == TypeOperation.DECHARGEMENT;
+        Long departId = entree ? null : emplacementStockId;
+        Long arriveeId = entree ? emplacementStockId : null;
+        if (mouvement.isEmpty()
+                || !MouvementStockService.correspondAuContenu(
+                mouvement.get(), entree ? TypeMouvement.ENTREE : TypeMouvement.SORTIE,
+                operation.getColisTransport().getColis().getId(),
+                operation.getQuantiteConcernee(), departId, arriveeId,
+                operation.getId(), null)) {
+            throw new IllegalArgumentException(
+                    "La clé d'idempotence est déjà utilisée pour une commande Stock différente.");
+        }
+    }
+
+    private String cleIdempotenceMouvement(OperationColis operation) {
+        return "OPERATION_COLIS_" + operation.getId();
     }
 
     private void validerCleIdempotence(String cleIdempotence) {
