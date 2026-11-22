@@ -118,3 +118,27 @@ En cas d'erreur :
 - Vérifier que la correction ne crée pas de nouvelle régression.
 
 L'objectif est de construire une application Ngokaf fonctionnelle, cohérente, sécurisée et maintenable.
+
+## 9. Enregistrement systématique des analyses
+
+Lorsqu'une analyse est demandée, tu dois obligatoirement enregistrer le résultat complet dans un fichier Markdown (`.md`) à la racine du projet.
+
+### Règles à respecter
+
+- À la fin de chaque analyse, créer un fichier Markdown contenant l'intégralité de l'analyse réalisée.
+- Le fichier doit contenir les éléments examinés, les constats, les décisions ou propositions, les incohérences détectées, les corrections recommandées et la conclusion, selon la nature de l'analyse.
+- Le document doit être structuré avec des titres et sous-titres clairs, et suffisamment détaillé pour servir de référence lors des prochaines étapes du développement.
+- Le nom du fichier doit être explicite, en majuscules, avec des mots séparés par des underscores, et se terminer par `.md`.
+- Ne jamais écraser un rapport d'analyse existant. Si un fichier portant le même nom existe, le compléter uniquement si l'analyse concerne le même sujet et la même étape ; sinon, créer un fichier distinct.
+- Ne pas se contenter d'afficher le rapport dans la conversation : il faut réellement créer ou mettre à jour le fichier dans le projet.
+- Ne modifier aucun autre fichier pendant une tâche d'analyse, sauf si l'utilisateur l'autorise explicitement.
+
+### Fin de chaque analyse
+
+Après chaque analyse, confirmer :
+1. Le nom et l'emplacement du fichier créé.
+2. Les principaux éléments contenus dans le rapport.
+3. Les éventuelles anomalies ou points bloquants identifiés.
+4. Un résumé concis dans la conversation.
+
+Cette règle s'applique à toutes les analyses du projet, qu'elles concernent la conception, les entités, les relations, les règles métier, la sécurité, le code, les tests, l'architecture ou toute autre partie du projet.
