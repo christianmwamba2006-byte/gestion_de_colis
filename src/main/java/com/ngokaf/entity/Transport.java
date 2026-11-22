@@ -1,6 +1,9 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,8 +13,7 @@ import java.util.Objects;
  * Entité Transport.
  * <p>
  * Un transport correspond à un voyage réel effectué par un seul bus.
- * Il suit un itinéraire et possède ses propres agences de départ et d'arrivée,
- * initialisées à partir de l'itinéraire à la création et figées par la suite.
+ * Il suit un itinéraire et possède ses propres agences de départ et d'arrivée.
  * </p>
  */
 @Entity
@@ -24,6 +26,8 @@ public class Transport {
     private Long id;
 
     @Column(name = "reference_transport", nullable = false, length = 100, unique = true)
+    @NotBlank
+    @Size(max = 100)
     private String referenceTransport;
 
     @Column(name = "date_depart_prevue")
@@ -39,6 +43,8 @@ public class Transport {
     private LocalDateTime dateArriveeReelle;
 
     @Column(name = "statut", nullable = false, length = 50)
+    @NotBlank
+    @Size(max = 50)
     private String statut;
 
     @Column(name = "observations", columnDefinition = "TEXT")
@@ -46,18 +52,22 @@ public class Transport {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_bus", nullable = false)
+    @NotNull
     private Bus bus;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_itineraire", nullable = false)
+    @NotNull
     private Itineraire itineraire;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_agence_depart", nullable = false)
+    @NotNull
     private Agence agenceDepart;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_agence_finale", nullable = false)
+    @NotNull
     private Agence agenceFinale;
 
     @OneToMany(mappedBy = "transport")
@@ -112,8 +122,12 @@ public class Transport {
         return dateDepartReelle;
     }
 
-    public void setDateDepartReelle(LocalDateTime dateDepartReelle) {
-        this.dateDepartReelle = dateDepartReelle;
+    public LocalDateTime enregistrerDepartReel() {
+        if (dateDepartReelle != null) {
+            throw new IllegalStateException("Le départ réel est déjà enregistré.");
+        }
+        dateDepartReelle = LocalDateTime.now();
+        return dateDepartReelle;
     }
 
     public LocalDateTime getDateArriveePrevue() {
@@ -128,8 +142,19 @@ public class Transport {
         return dateArriveeReelle;
     }
 
-    public void setDateArriveeReelle(LocalDateTime dateArriveeReelle) {
-        this.dateArriveeReelle = dateArriveeReelle;
+    public LocalDateTime enregistrerArriveeReelle() {
+        if (dateDepartReelle == null) {
+            throw new IllegalStateException("Le départ réel doit être enregistré avant l'arrivée.");
+        }
+        if (dateArriveeReelle != null) {
+            throw new IllegalStateException("L'arrivée réelle est déjà enregistrée.");
+        }
+        LocalDateTime maintenant = LocalDateTime.now();
+        if (maintenant.isBefore(dateDepartReelle)) {
+            throw new IllegalStateException("L'arrivée réelle précède le départ réel.");
+        }
+        dateArriveeReelle = maintenant;
+        return dateArriveeReelle;
     }
 
     public String getStatut() {

@@ -8,8 +8,7 @@ import java.util.Objects;
 /**
  * Entité Itineraire.
  * <p>
- * Un itinéraire est réutilisable par plusieurs transports.
- * Il possède obligatoirement une agence de départ et une agence finale.
+ * Un itinéraire est un parcours réutilisable par plusieurs transports.
  * </p>
  */
 @Entity
@@ -30,14 +29,6 @@ public class Itineraire {
     @Column(name = "statut", nullable = false, length = 50)
     private String statut;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "id_agence_depart", nullable = false)
-    private Agence agenceDepart;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "id_agence_finale", nullable = false)
-    private Agence agenceFinale;
-
     @OneToMany(mappedBy = "itineraire")
     private List<ArretItineraire> arrets = new ArrayList<>();
 
@@ -47,13 +38,10 @@ public class Itineraire {
     public Itineraire() {
     }
 
-    public Itineraire(String nomItineraire, String description, String statut,
-                      Agence agenceDepart, Agence agenceFinale) {
+    public Itineraire(String nomItineraire, String description, String statut) {
         this.nomItineraire = nomItineraire;
         this.description = description;
         this.statut = statut;
-        this.agenceDepart = agenceDepart;
-        this.agenceFinale = agenceFinale;
     }
 
     public Long getId() {
@@ -86,22 +74,6 @@ public class Itineraire {
 
     public void setStatut(String statut) {
         this.statut = statut;
-    }
-
-    public Agence getAgenceDepart() {
-        return agenceDepart;
-    }
-
-    public void setAgenceDepart(Agence agenceDepart) {
-        this.agenceDepart = agenceDepart;
-    }
-
-    public Agence getAgenceFinale() {
-        return agenceFinale;
-    }
-
-    public void setAgenceFinale(Agence agenceFinale) {
-        this.agenceFinale = agenceFinale;
     }
 
     public List<ArretItineraire> getArrets() {

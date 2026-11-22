@@ -1,6 +1,9 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.Objects;
 
 /**
@@ -21,19 +24,25 @@ public class Emplacement {
     @Column(name = "id_emplacement")
     private Long id;
 
+    @NotBlank
+    @Size(max = 50)
     @Column(name = "code_emplacement", nullable = false, length = 50)
     private String codeEmplacement;
 
+    @NotBlank
+    @Size(max = 100)
     @Column(name = "libelle", nullable = false, length = 100)
     private String libelle;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @NotNull
     @Column(name = "statut", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private StatutEmplacement statut;
 
+    @NotNull
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_agence", nullable = false)
     private Agence agence;

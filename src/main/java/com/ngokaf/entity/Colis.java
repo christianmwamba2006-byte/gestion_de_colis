@@ -1,10 +1,17 @@
 package com.ngokaf.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Entité Colis.
@@ -19,43 +26,65 @@ import java.util.Objects;
 @Table(name = "colis")
 public class Colis {
 
+    private static final Pattern VERIFICATEUR_HMAC_PATTERN =
+            Pattern.compile("hmac-sha256\\$[0-9a-f]{64}");
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_colis")
     private Long id;
 
+    @NotBlank
+    @Size(max = 100)
     @Column(name = "reference_colis", nullable = false, length = 100, unique = true)
     private String referenceColis;
 
     @Column(name = "designation", columnDefinition = "TEXT")
     private String designation;
 
+    @NotNull
+    @Positive
     @Column(name = "quantite", nullable = false)
     private Integer quantite;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @NotBlank
+    @Size(max = 50)
     @Column(name = "statut", nullable = false, length = 50)
     private String statut;
 
+    @NotNull
+    @PastOrPresent
     @Column(name = "date_enregistrement", nullable = false)
     private LocalDateTime dateEnregistrement;
 
+    // Keep the legacy column unchanged until an approved data migration is performed.
+    @JsonIgnore
+    @Size(max = 255)
     @Column(name = "code_secret_retrait", length = 255)
-    private String codeSecretRetrait;
+    private String verificateurCodeRetrait;
 
+    @NotNull
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_type_colis", nullable = false)
     private TypeColis typeColis;
 
+    @NotNull
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_expedition", nullable = false)
     private Expedition expedition;
 
+    @NotNull
     @ManyToOne(optional = false)
-    @JoinColumn(name = "id_lieu_destination", nullable = false)
+    @JoinColumn(name = "id_destination", nullable = false)
     private Lieu destination;
+
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "id_destinataire", nullable = false)
+    private Contact destinataire;
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "id_colis_parent", nullable = true)
@@ -72,18 +101,19 @@ public class Colis {
 
     public Colis(String referenceColis, String designation, Integer quantite,
                  String description, String statut, LocalDateTime dateEnregistrement,
-                 String codeSecretRetrait, TypeColis typeColis, Expedition expedition,
-                 Lieu destination, Colis parent) {
+                 String verificateurCodeRetrait, TypeColis typeColis, Expedition expedition,
+                 Lieu destination, Contact destinataire, Colis parent) {
         this.referenceColis = referenceColis;
         this.designation = designation;
         this.quantite = quantite;
         this.description = description;
         this.statut = statut;
         this.dateEnregistrement = dateEnregistrement;
-        this.codeSecretRetrait = codeSecretRetrait;
+        setVerificateurCodeRetrait(verificateurCodeRetrait);
         this.typeColis = typeColis;
         this.expedition = expedition;
         this.destination = destination;
+        this.destinataire = destinataire;
         this.parent = parent;
     }
 
@@ -143,12 +173,18 @@ public class Colis {
         this.dateEnregistrement = dateEnregistrement;
     }
 
-    public String getCodeSecretRetrait() {
-        return codeSecretRetrait;
+    @JsonIgnore
+    public String getVerificateurCodeRetrait() {
+        return verificateurCodeRetrait;
     }
 
-    public void setCodeSecretRetrait(String codeSecretRetrait) {
-        this.codeSecretRetrait = codeSecretRetrait;
+    @JsonIgnore
+    public void setVerificateurCodeRetrait(String verificateurCodeRetrait) {
+        if (verificateurCodeRetrait != null
+                && !VERIFICATEUR_HMAC_PATTERN.matcher(verificateurCodeRetrait).matches()) {
+            throw new IllegalArgumentException("Le code de retrait doit être un vérificateur HMAC-SHA-256.");
+        }
+        this.verificateurCodeRetrait = verificateurCodeRetrait;
     }
 
     public TypeColis getTypeColis() {
@@ -173,6 +209,14 @@ public class Colis {
 
     public void setDestination(Lieu destination) {
         this.destination = destination;
+    }
+
+    public Contact getDestinataire() {
+        return destinataire;
+    }
+
+    public void setDestinataire(Contact destinataire) {
+        this.destinataire = destinataire;
     }
 
     public Colis getParent() {

@@ -1,6 +1,10 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,17 +26,23 @@ public class FormatEtiquette {
     @Column(name = "id_format")
     private Long id;
 
+    @NotBlank
+    @Size(max = 100)
     @Column(name = "nom_format", nullable = false, length = 100)
     private String nomFormat;
 
+    @NotNull
+    @Positive
     @Column(name = "largeur", nullable = false, precision = 10, scale = 2)
     private BigDecimal largeur;
 
+    @NotNull
+    @Positive
     @Column(name = "hauteur", nullable = false, precision = 10, scale = 2)
     private BigDecimal hauteur;
 
-    @Column(name = "support", precision = 10, scale = 2)
-    private BigDecimal support;
+    @Column(name = "support")
+    private String support;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
@@ -44,7 +54,7 @@ public class FormatEtiquette {
     }
 
     public FormatEtiquette(String nomFormat, BigDecimal largeur, BigDecimal hauteur,
-                           BigDecimal support, String description) {
+                           String support, String description) {
         this.nomFormat = nomFormat;
         this.largeur = largeur;
         this.hauteur = hauteur;
@@ -84,11 +94,11 @@ public class FormatEtiquette {
         this.hauteur = hauteur;
     }
 
-    public BigDecimal getSupport() {
+    public String getSupport() {
         return support;
     }
 
-    public void setSupport(BigDecimal support) {
+    public void setSupport(String support) {
         this.support = support;
     }
 

@@ -1,6 +1,8 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -10,8 +12,8 @@ import java.util.Objects;
 /**
  * Entité Expedition.
  * <p>
- * Une expédition porte la référence de facture et le montant global du transport.
- * Une expédition peut contenir plusieurs colis et est lancée par un expéditeur (Contact).
+ * Une expédition est enregistrée par un utilisateur pour une agence d'origine
+ * et un expéditeur (Contact).
  * </p>
  */
 @Entity
@@ -23,21 +25,32 @@ public class Expedition {
     @Column(name = "id_expedition")
     private Long id;
 
-    @Column(name = "reference_facture", nullable = false, length = 100)
-    private String referenceFacture;
-
+    @NotNull
     @Column(name = "date_enregistrement", nullable = false)
     private LocalDateTime dateEnregistrement;
 
+    @NotNull
+    @DecimalMin("0.00")
     @Column(name = "montant_transport", nullable = false, precision = 15, scale = 2)
     private BigDecimal montantTransport;
 
     @Column(name = "observations", columnDefinition = "TEXT")
     private String observations;
 
+    @NotNull
     @ManyToOne(optional = false)
-    @JoinColumn(name = "id_contact", nullable = false)
+    @JoinColumn(name = "id_expediteur", nullable = false)
     private Contact expediteur;
+
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "id_agence", nullable = false)
+    private Agence agenceOrigine;
+
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "id_utilisateur", nullable = false)
+    private Utilisateur utilisateurEnregistreur;
 
     @OneToMany(mappedBy = "expedition")
     private List<Colis> colis = new ArrayList<>();
@@ -45,13 +58,18 @@ public class Expedition {
     public Expedition() {
     }
 
-    public Expedition(String referenceFacture, LocalDateTime dateEnregistrement,
-                      BigDecimal montantTransport, String observations, Contact expediteur) {
-        this.referenceFacture = referenceFacture;
-        this.dateEnregistrement = dateEnregistrement;
+    public Expedition(BigDecimal montantTransport, String observations, Contact expediteur,
+                      Agence agenceOrigine, Utilisateur utilisateurEnregistreur) {
         this.montantTransport = montantTransport;
         this.observations = observations;
         this.expediteur = expediteur;
+        this.agenceOrigine = agenceOrigine;
+        this.utilisateurEnregistreur = utilisateurEnregistreur;
+    }
+
+    @PrePersist
+    private void definirDateEnregistrement() {
+        dateEnregistrement = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -62,20 +80,8 @@ public class Expedition {
         this.id = id;
     }
 
-    public String getReferenceFacture() {
-        return referenceFacture;
-    }
-
-    public void setReferenceFacture(String referenceFacture) {
-        this.referenceFacture = referenceFacture;
-    }
-
     public LocalDateTime getDateEnregistrement() {
         return dateEnregistrement;
-    }
-
-    public void setDateEnregistrement(LocalDateTime dateEnregistrement) {
-        this.dateEnregistrement = dateEnregistrement;
     }
 
     public BigDecimal getMontantTransport() {
@@ -102,6 +108,22 @@ public class Expedition {
         this.expediteur = expediteur;
     }
 
+    public Agence getAgenceOrigine() {
+        return agenceOrigine;
+    }
+
+    public void setAgenceOrigine(Agence agenceOrigine) {
+        this.agenceOrigine = agenceOrigine;
+    }
+
+    public Utilisateur getUtilisateurEnregistreur() {
+        return utilisateurEnregistreur;
+    }
+
+    public void setUtilisateurEnregistreur(Utilisateur utilisateurEnregistreur) {
+        this.utilisateurEnregistreur = utilisateurEnregistreur;
+    }
+
     public List<Colis> getColis() {
         return colis;
     }
@@ -126,6 +148,6 @@ public class Expedition {
 
     @Override
     public String toString() {
-        return "Expedition{id=" + id + ", referenceFacture='" + referenceFacture + "'}";
+        return "Expedition{id=" + id + "}";
     }
 }

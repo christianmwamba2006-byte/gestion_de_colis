@@ -1,16 +1,17 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
  * Entité Etiquette.
  * <p>
- * Chaque étiquette possède sa propre référence QR. Une seule étiquette peut
- * être active par colis (champ estActive). Lorsqu'une nouvelle étiquette
- * remplace une ancienne, l'ancienne devient inactive. L'historique des
- * anciennes étiquettes est conservé.
+ * Chaque étiquette conserve une référence QR et son format. Son statut est
+ * l'unique source de vérité pour son cycle de vie.
  * </p>
  */
 @Entity
@@ -22,22 +23,26 @@ public class Etiquette {
     @Column(name = "id_etiquette")
     private Long id;
 
+    @NotBlank
+    @Size(max = 255)
     @Column(name = "reference_qr", nullable = false, length = 255, unique = true)
     private String referenceQr;
 
+    @NotNull
     @Column(name = "date_generation", nullable = false)
     private LocalDateTime dateGeneration;
 
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "statut", nullable = false, length = 50)
-    private String statut;
+    private StatutEtiquette statut;
 
-    @Column(name = "est_active", nullable = false)
-    private Boolean estActive;
-
+    @NotNull
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_colis", nullable = false)
     private Colis colis;
 
+    @NotNull
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_format", nullable = false)
     private FormatEtiquette format;
@@ -45,14 +50,16 @@ public class Etiquette {
     public Etiquette() {
     }
 
-    public Etiquette(String referenceQr, LocalDateTime dateGeneration, String statut,
-                     Boolean estActive, Colis colis, FormatEtiquette format) {
+    public Etiquette(String referenceQr, Colis colis, FormatEtiquette format) {
         this.referenceQr = referenceQr;
-        this.dateGeneration = dateGeneration;
-        this.statut = statut;
-        this.estActive = estActive;
+        this.statut = StatutEtiquette.ACTIVE;
         this.colis = colis;
         this.format = format;
+    }
+
+    @PrePersist
+    private void definirDateGeneration() {
+        dateGeneration = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -67,32 +74,26 @@ public class Etiquette {
         return referenceQr;
     }
 
-    public void setReferenceQr(String referenceQr) {
-        this.referenceQr = referenceQr;
-    }
-
     public LocalDateTime getDateGeneration() {
         return dateGeneration;
     }
 
-    public void setDateGeneration(LocalDateTime dateGeneration) {
-        this.dateGeneration = dateGeneration;
-    }
-
-    public String getStatut() {
+    public StatutEtiquette getStatut() {
         return statut;
     }
 
-    public void setStatut(String statut) {
-        this.statut = statut;
+    public void remplacer() {
+        if (statut != StatutEtiquette.ACTIVE) {
+            throw new IllegalStateException("Seule une étiquette active peut être remplacée.");
+        }
+        statut = StatutEtiquette.REMPLACEE;
     }
 
-    public Boolean getEstActive() {
-        return estActive;
-    }
-
-    public void setEstActive(Boolean estActive) {
-        this.estActive = estActive;
+    public void desactiver() {
+        if (statut != StatutEtiquette.ACTIVE) {
+            throw new IllegalStateException("Seule une étiquette active peut être désactivée.");
+        }
+        statut = StatutEtiquette.DESACTIVEE;
     }
 
     public Colis getColis() {
@@ -127,6 +128,6 @@ public class Etiquette {
 
     @Override
     public String toString() {
-        return "Etiquette{id=" + id + ", referenceQr='" + referenceQr + "', estActive=" + estActive + "}";
+        return "Etiquette{id=" + id + ", referenceQr='" + referenceQr + "', statut=" + statut + "}";
     }
 }

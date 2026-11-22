@@ -1,7 +1,10 @@
 package com.ngokaf.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.hibernate.annotations.Check;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -13,7 +16,10 @@ import java.util.Objects;
  * </p>
  */
 @Entity
-@Table(name = "operation_colis")
+@Table(name = "operation_colis",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"cle_idempotence"}))
+@Check(constraints = "quantite_concernee > 0")
+@Check(constraints = "cloture_participation = false or type_operation = 'DECHARGEMENT'")
 public class OperationColis {
 
     @Id
@@ -23,134 +29,107 @@ public class OperationColis {
 
     @Column(name = "type_operation", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
+    @NotNull
     private TypeOperation typeOperation;
 
     @Column(name = "date_operation", nullable = false)
+    @NotNull
     private LocalDateTime dateOperation;
 
     @Column(name = "quantite_concernee", nullable = false)
-    @Min(1)
+    @Positive
+    @NotNull
     private Integer quantiteConcernee;
 
     @Column(name = "observations", columnDefinition = "TEXT")
     private String observations;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "id_colis", nullable = false)
-    private Colis colis;
-
-    @ManyToOne(optional = true)
-    @JoinColumn(name = "id_colis_transport", nullable = true)
+    @JoinColumn(name = "id_colis_transport", nullable = false)
+    @NotNull
     private ColisTransport colisTransport;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_utilisateur", nullable = false)
+    @NotNull
     private Utilisateur utilisateur;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "id_lieu", nullable = false)
-    private Lieu lieu;
-
-    @ManyToOne(optional = true)
-    @JoinColumn(name = "id_transport_arret", nullable = true)
+    @JoinColumn(name = "id_transport_arret", nullable = false)
+    @NotNull
     private TransportArret transportArret;
+
+    @Column(name = "cloture_participation", nullable = false)
+    private boolean clotureParticipation;
+
+    @Column(name = "cle_idempotence", length = 100, unique = true)
+    private String cleIdempotence;
 
     public OperationColis() {
     }
 
-    public OperationColis(TypeOperation typeOperation, LocalDateTime dateOperation,
-                          Integer quantiteConcernee, String observations, Colis colis,
-                          ColisTransport colisTransport, Utilisateur utilisateur,
-                          Lieu lieu, TransportArret transportArret) {
+    public OperationColis(TypeOperation typeOperation, Integer quantiteConcernee,
+                          String observations, ColisTransport colisTransport,
+                          Utilisateur utilisateur, TransportArret transportArret,
+                          boolean clotureParticipation, String cleIdempotence) {
         this.typeOperation = typeOperation;
-        this.dateOperation = dateOperation;
         this.quantiteConcernee = quantiteConcernee;
         this.observations = observations;
-        this.colis = colis;
         this.colisTransport = colisTransport;
         this.utilisateur = utilisateur;
-        this.lieu = lieu;
         this.transportArret = transportArret;
+        this.clotureParticipation = clotureParticipation;
+        this.cleIdempotence = cleIdempotence;
+    }
+
+    @PrePersist
+    private void definirDateOperation() {
+        dateOperation = LocalDateTime.now();
     }
 
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public TypeOperation getTypeOperation() {
         return typeOperation;
-    }
-
-    public void setTypeOperation(TypeOperation typeOperation) {
-        this.typeOperation = typeOperation;
     }
 
     public LocalDateTime getDateOperation() {
         return dateOperation;
     }
 
-    public void setDateOperation(LocalDateTime dateOperation) {
-        this.dateOperation = dateOperation;
-    }
-
     public Integer getQuantiteConcernee() {
         return quantiteConcernee;
-    }
-
-    public void setQuantiteConcernee(Integer quantiteConcernee) {
-        this.quantiteConcernee = quantiteConcernee;
     }
 
     public String getObservations() {
         return observations;
     }
 
-    public void setObservations(String observations) {
-        this.observations = observations;
-    }
-
-    public Colis getColis() {
-        return colis;
-    }
-
-    public void setColis(Colis colis) {
-        this.colis = colis;
-    }
-
     public ColisTransport getColisTransport() {
         return colisTransport;
-    }
-
-    public void setColisTransport(ColisTransport colisTransport) {
-        this.colisTransport = colisTransport;
     }
 
     public Utilisateur getUtilisateur() {
         return utilisateur;
     }
 
-    public void setUtilisateur(Utilisateur utilisateur) {
-        this.utilisateur = utilisateur;
-    }
-
-    public Lieu getLieu() {
-        return lieu;
-    }
-
-    public void setLieu(Lieu lieu) {
-        this.lieu = lieu;
-    }
-
     public TransportArret getTransportArret() {
         return transportArret;
     }
 
-    public void setTransportArret(TransportArret transportArret) {
-        this.transportArret = transportArret;
+    public boolean isClotureParticipation() {
+        return clotureParticipation;
+    }
+
+    public String getCleIdempotence() {
+        return cleIdempotence;
+    }
+
+    @AssertTrue(message = "Seul un déchargement peut clôturer une participation.")
+    public boolean isClotureCoherente() {
+        return !clotureParticipation || typeOperation == TypeOperation.DECHARGEMENT;
     }
 
     @Override
